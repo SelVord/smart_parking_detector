@@ -1,0 +1,45 @@
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.ipynb_checkpoints/
+
+# Model weights (большие файлы)
+*.pt
+*.pth
+
+# Данные и датасеты (тяжёлые)
+data/pklot/
+data/patches/
+data/my_data/
+
+# Kaggle cache
+~/.cache/kagglehub/
+
+# Временные файлы
+*.tmp
+*.temp
+tmp/
+
+# VS Code
+.vscode/
+
+# Jupyter
+.jupyter/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Логи
+*.log
+runs/
