@@ -49,7 +49,6 @@ A Streamlit web app for real-time parking space occupancy detection. Mark parkin
 | CNN classifier | PyTorch + MobileNetV2 |
 | Image processing | OpenCV, Pillow |
 | Background processing | Python threading |
-| Training data | PKLot (COCO format) |
 
 ---
 
@@ -63,16 +62,8 @@ parking/
 │   ├── drawing.py           # Zone drawing widget (rect + 4-point modes)
 │   ├── ui.py                # CSS, header, metrics, zone overlay renderer
 │   └── video_processor.py   # Background video processing (threading)
-├── scripts/
-│   └── train_on_pklot.py    # Training script — PKLot + custom data
 ├── models/
-│   └── cnn_classifier.pth   # Trained weights (not tracked by git)
-├── data/
-│   ├── images/              # Sample parking photos
-│   ├── results/             # Sample analysis outputs
-│   ├── zones/               # Saved zone JSON files
-│   └── patches/             # (optional) custom training patches
-├── notebooks/               # Exploration and prototyping notebooks
+│   └── cnn_classifier.pth   # Trained weights (download separately — see Setup)
 └── requirements.txt
 ```
 
@@ -104,7 +95,21 @@ For GPU support (CUDA 12.8):
 pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
 ```
 
-### 3. Run the app
+### 3. Download the pre-trained model
+
+A pre-trained MobileNetV2 checkpoint (fine-tuned on PKLot) is provided so you can run the app immediately — no dataset download or training required.
+
+Download `cnn_classifier.pth` from the [Releases page](https://github.com/your-username/parking-detection/releases) and place it in the `models/` directory:
+
+```
+parking/
+└── models/
+    └── cnn_classifier.pth   ← place it here
+```
+
+> **No model?** The app will automatically fall back to an HSV color/texture heuristic so it always runs, even without the weights file.
+
+### 4. Run the app
 
 ```bash
 streamlit run app/app.py
@@ -114,9 +119,33 @@ Open `http://localhost:8501` in your browser.
 
 ---
 
-## Training the CNN
+## How It Works
 
-The training script uses the [PKLot dataset](https://public.roboflow.com/object-detection/pklot) — a large benchmark with 497K+ annotated parking spaces from multiple parking lots and weather conditions. No manual labeling is required; annotations are already in COCO format.
+1. **Zone marking** — the user draws rectangles or places 4 corner points on the parking image
+2. **Perspective warp** — each zone's quadrilateral is warped to a standard 200×300 view using `cv2.getPerspectiveTransform`, correcting for any camera angle
+3. **CNN inference** — the warped patch is resized to 64×64, normalized with ImageNet stats, and passed through MobileNetV2; softmax gives a probability for each class
+4. **Confidence filtering** — if the winning class probability is below the configured threshold, the space is shown in yellow (uncertain) instead of green/red
+5. **Video stability** — for video processing, a configurable number of consecutive frames must agree before a status change is recorded, filtering out single-frame noise
+
+---
+
+## Color Legend
+
+| Color | Meaning |
+|---|---|
+| Green | Space is free |
+| Red | Space is occupied |
+| Yellow | Prediction confidence is below threshold (uncertain) |
+| Cyan | Space not yet analyzed |
+
+---
+
+## Training from Scratch (Optional)
+
+If you want to retrain the model yourself, the training script uses the [PKLot dataset](https://public.roboflow.com/object-detection/pklot) — a large benchmark with 497K+ annotated parking spaces from multiple parking lots and weather conditions.
+
+<details>
+<summary>Expand training instructions</summary>
 
 ### Download PKLot
 
@@ -161,32 +190,7 @@ The best checkpoint (by validation accuracy) is saved to `models/cnn_classifier.
 
 Drop additional labeled patch images into `data/patches/empty/` and `data/patches/occupied/`. The training script automatically picks them up and adds them to the training set.
 
----
-
-## How It Works
-
-1. **Zone marking** — the user draws rectangles or places 4 corner points on the parking image
-2. **Perspective warp** — each zone's quadrilateral is warped to a standard 200×300 view using `cv2.getPerspectiveTransform`, correcting for any camera angle
-3. **CNN inference** — the warped patch is resized to 64×64, normalized with ImageNet stats, and passed through MobileNetV2; softmax gives a probability for each class
-4. **Confidence filtering** — if the winning class probability is below the configured threshold, the space is shown in yellow (uncertain) instead of green/red
-5. **Video stability** — for video processing, a configurable number of consecutive frames must agree before a status change is recorded, filtering out single-frame noise
-
----
-
-## Color Legend
-
-| Color | Meaning |
-|---|---|
-| Green | Space is free |
-| Red | Space is occupied |
-| Yellow | Prediction confidence is below threshold (uncertain) |
-| Cyan | Space not yet analyzed |
-
----
-
-## Sample Results
-
-Sample images and their analysis results are in `data/images/` and `data/results/`.
+</details>
 
 ---
 
